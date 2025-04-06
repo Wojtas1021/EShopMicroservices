@@ -6,14 +6,14 @@ using Microsoft.Extensions.Logging;
 
 namespace BuildingBlocks.Exceptions.Handler;
 
-public class CustomExceptionHandler 
+public class CustomExceptionHandler
     (ILogger<CustomExceptionHandler> logger)
     : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken cancellationToken)
     {
         logger.LogError(
-            "Error Message: {exceptionMessage}, Time of occurrence: {time}",
+            "Error Message: {exceptionMessage}, Time of occurrence {time}",
             exception.Message, DateTime.UtcNow);
 
         (string Detail, string Title, int StatusCode) details = exception switch
@@ -53,20 +53,19 @@ public class CustomExceptionHandler
         var problemDetails = new ProblemDetails
         {
             Title = details.Title,
-            Status = details.StatusCode,
             Detail = details.Detail,
-            Instance = context.Request.Path,
+            Status = details.StatusCode,
+            Instance = context.Request.Path
         };
 
         problemDetails.Extensions.Add("traceId", context.TraceIdentifier);
 
-        if(exception is ValidationException validationException)
+        if (exception is ValidationException validationException)
         {
             problemDetails.Extensions.Add("ValidationErrors", validationException.Errors);
         }
 
         await context.Response.WriteAsJsonAsync(problemDetails, cancellationToken: cancellationToken);
-
         return true;
     }
 }
